@@ -1,4 +1,4 @@
-/* global setTimeout */
+/* global requestAnimationFrame */
 const chat = document.getElementById("chat");
 const msgs = document.getElementById("msgs");
 
@@ -37,9 +37,9 @@ async function getNewMsgs() {
   } catch (e) {
     console.error("Polling error.", e);
   }
+  if (!json) return;
   allChat = json.msg;
   render();
-  setTimeout(getNewMsgs, INTERVAL);
 }
 
 function render() {
@@ -55,5 +55,21 @@ function render() {
 const template = (user, msg) =>
   `<li class="collection-item"><span class="badge">${user}</span>${msg}</li>`;
 
-// make the first request
-getNewMsgs();
+let timeToMakeNextRequest = 0;
+let requestInFlight = false;
+
+async function rafTimer(time) {
+  if (timeToMakeNextRequest <= time && !requestInFlight) {
+    requestInFlight = true;
+    try {
+      await getNewMsgs();
+    } finally {
+      requestInFlight = false;
+      timeToMakeNextRequest = time + INTERVAL;
+    }
+  }
+
+  requestAnimationFrame(rafTimer);
+}
+
+requestAnimationFrame(rafTimer);
